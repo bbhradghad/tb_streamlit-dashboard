@@ -516,7 +516,7 @@ screened_codes   = screened_codes   if 'screened_codes'   in dir() else []
 password = st.text_input("Password", type="password",
                           placeholder="Enter password to continue",
                           label_visibility="collapsed")
-if password != "JEH2026":
+if password != "JFHC2026":
     if password != "":
         st.error("Incorrect password. Please try again.")
     st.stop()
