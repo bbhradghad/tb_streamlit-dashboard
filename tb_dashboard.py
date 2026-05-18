@@ -3,12 +3,6 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import io
-from pathlib import Path
-try:
-    from rapidfuzz import process, fuzz
-    _FUZZY_OK = True
-except ImportError:
-    _FUZZY_OK = False
  
 st.set_page_config(
     page_title="TB Dashboard - First Health Cluster",
@@ -17,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
  
-# Palette 
+# ── Palette ────────────────────────────────────────────────────────────────────
 NAVY       = "#0D2B5E"
 NAVY_MED   = "#1B4F9B"
 BLUE_MED   = "#2563EB"
@@ -41,7 +35,7 @@ BLUE_SCALE = [[0.0, BLUE_PALE2], [0.5, BLUE_LT], [1.0, NAVY]]
 PALETTE    = [BLUE_MED, TEAL, "#8B5CF6", "#F59E0B", "#10B981",
               "#EF4444", "#6366F1", "#14B8A6", NAVY, GRAY_MED]
  
-# CSS
+# ── CSS ────────────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -323,7 +317,7 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
  
-#  Column lists 
+# ── Column lists ───────────────────────────────────────────────────────────────
 A_TO_F = ['INV ID', 'Date of entry in HESN', 'Recieved Date', 'Epi year', 'Epi week', 'Name']
 HIGHLIGHTED_COLS = [
     'Gender', 'Age in years', 'Nationality', 'Saudi', 'Address', 'Occupation',
@@ -338,7 +332,7 @@ HIGHLIGHTED_COLS = [
 ]
 TARGET_COLS = A_TO_F + HIGHLIGHTED_COLS
  
-# Chart helper 
+# ── Chart helper ───────────────────────────────────────────────────────────────
 def base_layout(fig, height=320, margin=None, legend=False):
     m = margin or dict(t=10, b=40, l=6, r=6)
     fig.update_layout(
@@ -350,7 +344,7 @@ def base_layout(fig, height=320, margin=None, legend=False):
     )
     return fig
  
-# Data loaders 
+# ── Data loaders ───────────────────────────────────────────────────────────────
 @st.cache_data
 def load_df(file_bytes):
     df = pd.read_excel(io.BytesIO(file_bytes))
@@ -404,9 +398,9 @@ def load_verify_sheet(file_bytes):
     screened   = raw[raw[fahss_col].astype(str).str.strip() == 'نعم']['code'].tolist()
     return registered, screened
  
-
+# ══════════════════════════════════════════════════════════════════════════════
 # SIDEBAR — Navigation + Upload + Filters
-
+# ══════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
     # Logo / title
     st.markdown(f"""
@@ -500,8 +494,9 @@ with st.sidebar:
           Total records: <span style="color:{WHITE};font-weight:600;">{len(df):,}</span>
         </div>""", unsafe_allow_html=True)
  
+# ══════════════════════════════════════════════════════════════════════════════
 # MAIN CONTENT
-
+# ══════════════════════════════════════════════════════════════════════════════
 if df is None:
     st.markdown(f"""
     <div class="top-header">
@@ -516,7 +511,7 @@ if df is None:
 registered_codes = registered_codes if 'registered_codes' in dir() else []
 screened_codes   = screened_codes   if 'screened_codes'   in dir() else []
  
-# Password 
+# ── Password ──────────────────────────────────────────────────────────────────
 password = st.text_input("Password", type="password",
                           placeholder="Enter password to continue",
                           label_visibility="collapsed")
@@ -525,7 +520,7 @@ if password != "JFHC2026":
         st.error("Incorrect password. Please try again.")
     st.stop()
  
-# Apply filters 
+# ── Apply filters ─────────────────────────────────────────────────────────────
 fdf = df.copy()
 if sel_weeks    and 'Epi week'           in fdf.columns: fdf = fdf[fdf['Epi week'].isin(sel_weeks)]
 if sel_gender   and 'Gender'             in fdf.columns: fdf = fdf[fdf['Gender'].isin(sel_gender)]
@@ -539,7 +534,7 @@ if fdf.empty:
 total = len(fdf)
 contacts_total = len(contacts_df) if contacts_df is not None else 0
  
-# Shared KPI values 
+# ── Shared KPI values ─────────────────────────────────────────────────────────
 active_week = int(fdf['Epi week'].max()) if 'Epi week' in fdf.columns else '-'
 males   = int((fdf['Gender'] == 'Male').sum())           if 'Gender'      in fdf.columns else 0
 females = int((fdf['Gender'] == 'Female').sum())         if 'Gender'      in fdf.columns else 0
@@ -551,7 +546,7 @@ avg_age = fdf['Age in years'].mean()                     if 'Age in years' in fd
 died    = int((fdf['Outcome'] == 'Died').sum())          if 'Outcome'     in fdf.columns else 0
 in_prog = int((fdf['Outcome'].astype(str).str.strip() == 'In progress').sum()) if 'Outcome' in fdf.columns else 0
  
-# Top header (always visible)
+# ── Top header (always visible) ───────────────────────────────────────────────
 st.markdown(f"""
 <div class="top-header">
   <div>
@@ -561,7 +556,7 @@ st.markdown(f"""
   <div class="header-badge">Jeddah First Health Cluster</div>
 </div>""", unsafe_allow_html=True)
  
-# Filter summary bar (above KPIs)
+# ── Filter summary bar (above KPIs) ──────────────────────────────────────────
 st.markdown(f"""
 <div style="background:{WHITE};border:1px solid {BORDER};border-radius:10px;
             padding:10px 18px;margin-bottom:14px;display:flex;align-items:center;
@@ -585,7 +580,7 @@ st.markdown(f"""
   </span>
 </div>""", unsafe_allow_html=True)
  
-# KPIs (always visible under header) 
+# ── KPIs (always visible under header) ───────────────────────────────────────
 st.markdown(f'<div class="kpi-group-label">Case Indicators</div>', unsafe_allow_html=True)
 r1 = st.columns(5, gap="small")
 for col, (label, val, sub) in zip(r1, [
@@ -621,14 +616,14 @@ for col, (label, val, sub) in zip(r2, [
  
 st.markdown(f"<hr style='border-color:{BORDER};margin:18px 0 14px 0;'>", unsafe_allow_html=True)
  
-
+# ══════════════════════════════════════════════════════════════════════════════
 # PAGE ROUTING via sidebar radio
-
+# ══════════════════════════════════════════════════════════════════════════════
 clean_page = page.strip()
  
-
+# ════════════════════════════════════════════════════════════════════════════════
 # PAGE 1 — Epidemic Curve
-
+# ════════════════════════════════════════════════════════════════════════════════
 if clean_page == "Epidemic Curve":
     st.markdown('<div class="page-title">Epidemic Curve</div>', unsafe_allow_html=True)
  
@@ -754,165 +749,27 @@ if clean_page == "Epidemic Curve":
                 </div>""", unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
  
-
+# ════════════════════════════════════════════════════════════════════════════════
 # PAGE 2 — Demographics
-
+# ════════════════════════════════════════════════════════════════════════════════
 elif clean_page == "Demographics":
     st.markdown('<div class="page-title">Demographics</div>', unsafe_allow_html=True)
  
-    #  Neighbourhood Map 
+    # Neighbourhood distribution (full width first)
     if 'Address' in fdf.columns:
-
-        # Built-in Jeddah neighbourhood coordinates database
-        _JEDDAH_NBHD = [
-("Mraykh",              21.5433, 39.2456),
-("Ghulil",              21.5089, 39.2398),
-("Al-Manar",            21.5462, 39.1948),
-("Al-Fadeelah",         21.6234, 39.1987),
-("Al-Jawharah",         21.5234, 39.1456),
-("Al-Amir Fawaz",       21.6012, 39.1823),
-("Abruq Ar Rughamah",   21.5934, 39.2234),
-("Al-Nozla Al-Yamaniya",21.4923, 39.2012),
-("Al-Samer",            21.6023, 39.1756),
-("Mushrefah",           21.5912, 39.2134),
-("Al-Sanabel",          21.6123, 39.2034),
-("Al-Qurainiyah",       21.5289, 39.2534),
-("Al-Naseem",           21.5823, 39.2223),
-("Al-Mahjer",           21.5812, 39.1967),
-("Al-Wahah",            21.5734, 39.1812),
-("Al-Faihaa",           21.5867, 39.2056),
-("Al-Rughama",          21.5812, 39.2412),
-("Al-Mahamid",          21.4912, 39.2212),
-("Al-Taysir",           21.5967, 39.2056),
-("Al-Nuzlah Al-Sharqiyah", 21.5089, 39.2156),
-("Al-Hindawiyah",       21.5023, 39.1923),
-("Al-Rawabi",           21.5956, 39.2156),
-("Al-Rawdah",           21.5434, 39.1734),
-("Al-Ajawad",           21.6112, 39.1689),
-("Al-Shaqah",           21.6367, 39.1312),
-("Al-Murjan",           21.5278, 39.1345),
-("Al-Harazat",          21.5512, 39.2656),
-("Al-Adl",              21.5389, 39.2312),
-("Umm Al-Salam",        21.5156, 39.2489),
-("Al-Fayha",            21.5878, 39.2056),
-("Mada'in Fahd",        21.6512, 39.1612),
-("Al-Waziriyyah",       21.5489, 39.2578),
-("K14",                 21.3823, 39.1512),
-("Al-Ajaweed",          21.6112, 39.1689),
-("alshafa",             21.4712, 39.1812),
-("Al-Sulimaniah",       21.5489, 39.1823),
-("alrweis",             21.5256, 39.1656),
-("Ar Rabwah",           21.5512, 39.1901),
-("Al-Khumrah",          21.4812, 39.2612),
-("Al-Shifa",            21.4956, 39.2456),
-("Al-Ruwais",           21.5256, 39.1656),
-("jed",                 21.5434, 39.1734),
-("Al-Olaya",            21.5556, 39.1712),
-("Al-Rabwa",            21.5512, 39.1901),
-("Prince Abdulmajeed",  21.5412, 39.1767),
-("Al-Wurud",            21.5534, 39.1745),
-("Al-Balad",            21.4867, 39.1867),
-("Al-Adel",             21.5389, 39.2312),
-("Taibah",              21.5823, 39.2212),
-("Homless",             21.5434, 39.1734),
-("Al-Baghdadiyah",      21.5178, 39.1867),
-("Al-Sharafeyah",       21.5123, 39.2012),
-("Al-lith",             21.2934, 39.1512),
-("althager",            21.4867, 39.1912),
-("k14",                 21.3823, 39.1512),
-        ]
-        _NBHD_NAMES = [x[0] for x in _JEDDAH_NBHD]
-        _NBHD_DICT  = {x[0]: (x[1], x[2]) for x in _JEDDAH_NBHD}
-
-        # Count cases per neighbourhood
-        nbhd_counts = fdf['Address'].dropna().value_counts().reset_index()
-        nbhd_counts.columns = ['Neighbourhood', 'Cases']
-
-        # Try to load external coords CSV first, else fuzzy-match built-in DB
-        coords_csv = Path("neighbourhood_coords.csv")
-        if coords_csv.exists():
-            coords_df = pd.read_csv(coords_csv)
-            coords_df = coords_df.dropna(subset=['lat', 'lon'])
-            lookup = {r['neighbourhood_raw']: (r['lat'], r['lon'])
-                      for _, r in coords_df.iterrows()}
-        else:
-            lookup = {}
-
-        def _resolve(name):
-            if name in lookup:
-                return lookup[name]
-            if _FUZZY_OK:
-                m = process.extractOne(name, _NBHD_NAMES,
-                                       scorer=fuzz.token_sort_ratio,
-                                       score_cutoff=55)
-                if m:
-                    return _NBHD_DICT[m[0]]
-            return None, None
-
-        nbhd_counts['lat'] = None
-        nbhd_counts['lon'] = None
-        for i, row in nbhd_counts.iterrows():
-            lat, lon = _resolve(row['Neighbourhood'])
-            nbhd_counts.at[i, 'lat'] = lat
-            nbhd_counts.at[i, 'lon'] = lon
-
-        map_df  = nbhd_counts.dropna(subset=['lat', 'lon']).copy()
-        miss_df = nbhd_counts[nbhd_counts['lat'].isna()].copy()
-
-        # Scatter map -------------
-        st.markdown('<div class="chart-card"><div class="card-title">Cases by Neighbourhood </div>',
+        st.markdown('<div class="chart-card"><div class="card-title">Cases by Neighbourhood (Top 20)</div>',
                     unsafe_allow_html=True)
-
-        if not map_df.empty:
-            fig_map = px.scatter_mapbox(
-                map_df,
-                lat='lat', lon='lon',
-                size='Cases',
-                color='Cases',
-                color_continuous_scale=BLUE_SCALE,
-                hover_name='Neighbourhood',
-                hover_data={'Cases': True, 'lat': False, 'lon': False},
-                size_max=45,
-                zoom=10.5,
-                center={"lat": 21.543, "lon": 39.172},
-                mapbox_style="carto-positron",
-                labels={'Cases': 'Cases'},
-            )
-            fig_map.update_layout(
-                paper_bgcolor=WHITE,
-                height=480,
-                margin=dict(t=4, b=4, l=0, r=0),
-                coloraxis_colorbar=dict(
-                    title="Cases",
-                    thickness=12,
-                    len=0.6,
-                    tickfont=dict(size=10),
-                ),
-            )
-            st.plotly_chart(fig_map, use_container_width=True)
-
-            if not miss_df.empty:
-                st.markdown(
-                    f"<p style='font-size:0.72rem;color:{GRAY_MED};margin-top:4px;'>"
-                    f"<b>{len(miss_df)}</b> neighbourhood(s) not shown (no coordinates matched): "
-                    + ", ".join(miss_df['Neighbourhood'].tolist()) + "</p>",
-                    unsafe_allow_html=True
-                )
-        else:
-            # Fallback: show bar chart if nothing matched
-            st.info("No coordinates matched — showing bar chart instead. "
-                    "Run build_neighbourhood_coords.py and place the CSV here to enable the map.")
-            nbhd_top = nbhd_counts.head(20)
-            fig_fb = px.bar(nbhd_top, x='Cases', y='Neighbourhood', orientation='h',
-                            color='Cases', color_continuous_scale=BLUE_SCALE, text='Cases')
-            fig_fb.update_traces(textposition='outside', textfont_size=10)
-            fig_fb = base_layout(fig_fb, height=max(320, len(nbhd_top)*28),
-                                 margin=dict(t=6, b=16, l=6, r=55))
-            fig_fb.update_layout(bargap=0.22, coloraxis_showscale=False,
-                                 yaxis=dict(autorange='reversed', title=''),
-                                 xaxis=dict(title='Cases'))
-            st.plotly_chart(fig_fb, use_container_width=True)
-
+        nbhd_df = fdf['Address'].dropna().value_counts().head(20).reset_index()
+        nbhd_df.columns = ['Neighbourhood', 'Count']
+        fig_nbhd = px.bar(nbhd_df, x='Count', y='Neighbourhood', orientation='h',
+                          color='Count', color_continuous_scale=BLUE_SCALE, text='Count')
+        fig_nbhd.update_traces(textposition='outside', textfont_size=10)
+        h_nbhd = max(320, len(nbhd_df) * 28)
+        fig_nbhd = base_layout(fig_nbhd, height=h_nbhd, margin=dict(t=6, b=16, l=6, r=55))
+        fig_nbhd.update_layout(bargap=0.22, coloraxis_showscale=False,
+                                yaxis=dict(autorange='reversed', title=''),
+                                xaxis=dict(title='Cases'))
+        st.plotly_chart(fig_nbhd, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
  
     col_a, col_b = st.columns(2, gap="large")
@@ -953,10 +810,10 @@ elif clean_page == "Demographics":
                               xaxis=dict(title='Age Group'), yaxis=dict(title='Cases'))
             st.plotly_chart(fig, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
-
-
+ 
+# ════════════════════════════════════════════════════════════════════════════════
 # PAGE 3 — Disease & Treatment
-
+# ════════════════════════════════════════════════════════════════════════════════
 elif clean_page == "Disease & Treatment":
     st.markdown('<div class="page-title">Disease & Treatment</div>', unsafe_allow_html=True)
  
@@ -1030,9 +887,9 @@ elif clean_page == "Disease & Treatment":
         st.plotly_chart(fig, use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
  
-
+# ════════════════════════════════════════════════════════════════════════════════
 # PAGE 4 — Comorbidities
-
+# ════════════════════════════════════════════════════════════════════════════════
 elif clean_page == "Comorbidities":
     st.markdown('<div class="page-title">Comorbidities</div>', unsafe_allow_html=True)
  
@@ -1082,7 +939,7 @@ elif clean_page == "Comorbidities":
                   <div class="kpi-sub">{cnt/total*100:.1f}% of cases</div>
                 </div>""", unsafe_allow_html=True)
  
-    # Deaths
+    # ── Deaths ──────────────────────────────────────────────────────────────
     st.markdown('<div class="section-title">Deaths</div>', unsafe_allow_html=True)
     if 'Outcome' in fdf.columns:
         died_df = fdf[fdf['Outcome'] == 'Died'].copy()
@@ -1152,7 +1009,7 @@ elif clean_page == "Comorbidities":
                     st.plotly_chart(fig, use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
  
-    # HIV
+    # ── HIV ─────────────────────────────────────────────────────────────────
     st.markdown('<div class="section-title">HIV Co-infection</div>', unsafe_allow_html=True)
     if 'HIV result ' in fdf.columns:
         hiv_pos_df  = fdf[fdf['HIV result '].astype(str).str.strip().str.lower() == 'positive'].copy()
@@ -1231,9 +1088,9 @@ elif clean_page == "Comorbidities":
  
  
  
-
+# ════════════════════════════════════════════════════════════════════════════════
 # PAGE 5 — Contacts
-
+# ════════════════════════════════════════════════════════════════════════════════
 elif clean_page == "Contacts":
     st.markdown('<div class="page-title">Contacts</div>', unsafe_allow_html=True)
  
@@ -1251,7 +1108,7 @@ elif clean_page == "Contacts":
         on_inh    = int((cdf['Intervention'].astype(str).str.strip().str.upper() == 'INH').sum()) if 'Intervention' in cdf.columns else 0
         is_case   = int((cdf['Is he/she a Case?'].astype(str).str.strip().str.lower() == 'yes').sum()) if 'Is he/she a Case?' in cdf.columns else 0
  
-        # حساب أرقام الرئوي والمخالطين 
+        # ── حساب أرقام الرئوي والمخالطين ──────────────────────────────────
         pulm_all       = fdf[fdf['Final Dis'] == 'Pulmonary'] if 'Final Dis' in fdf.columns else fdf
         n_pulm_all     = len(pulm_all)
         n_have_contacts = int((pulm_all['Patient Have Contacts'] == 'Yes').sum()) if 'Patient Have Contacts' in pulm_all.columns else 0
@@ -1264,7 +1121,7 @@ elif clean_page == "Contacts":
         pct_scr   = screened_n      / n_have_contacts * 100 if n_have_contacts else 0
         pct_notsc = n_not_yet_scr   / n_have_contacts * 100 if n_have_contacts else 0
  
-        # PULMONARY CASES — CONTACT SCREENING STATUS 
+        # ── PULMONARY CASES — CONTACT SCREENING STATUS ─────────────────────
         st.markdown(f"""
         <div style="font-size:0.60rem;font-weight:700;color:{GRAY_MED};
                     text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;">
@@ -1288,7 +1145,7 @@ elif clean_page == "Contacts":
  
         st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
  
-        # مؤشر فحص المخالطين العام
+        # ── مؤشر فحص المخالطين العام ──────────────────────────────────────
         scr_rate    = screened_n / n_pulm_all * 100 if n_pulm_all else 0
  
         if scr_rate >= 80:
@@ -1427,7 +1284,7 @@ elif clean_page == "Contacts":
                   <div class="kpi-sub">{sub if sub else "&nbsp;"}</div>
                 </div>""", unsafe_allow_html=True)
  
-        # Cases Not Yet Screened
+        # ── Cases Not Yet Screened ─────────────────────────────────────────
         st.markdown('<div class="section-title">Cases Not Yet Screened</div>', unsafe_allow_html=True)
         if 'Final Dis' in fdf.columns and 'Patient Have Contacts' in fdf.columns:
             screened_set = set(str(c).strip() for c in screened_codes)
@@ -1518,9 +1375,9 @@ elif clean_page == "Contacts":
                                data=case_contacts.to_csv(index=False, encoding='utf-8-sig'),
                                file_name=f"contacts_{sel_code}.csv", mime="text/csv")
  
-
+# ════════════════════════════════════════════════════════════════════════════════
 # PAGE 6 — Raw Data
-
+# ════════════════════════════════════════════════════════════════════════════════
 elif clean_page == "Raw Data":
     st.markdown('<div class="page-title">Raw Data</div>', unsafe_allow_html=True)
     st.markdown('<div class="chart-card"><div class="card-title">All Records</div>',
@@ -1538,7 +1395,7 @@ elif clean_page == "Raw Data":
                        file_name="tb_cases_filtered.csv", mime="text/csv")
     st.markdown('</div>', unsafe_allow_html=True)
  
-# Footer 
+# ── Footer ─────────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <div style="text-align:center;padding:14px 0 4px 0;border-top:1px solid {BORDER};margin-top:20px;">
   <span style="font-size:0.66rem;color:{GRAY_LT};">
