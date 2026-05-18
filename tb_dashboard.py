@@ -765,7 +765,7 @@ elif clean_page == "Demographics":
 
         # Built-in Jeddah neighbourhood coordinates database
         _JEDDAH_NBHD = [
-            ("Mraykh",              21.5433, 39.2456),
+("Mraykh",              21.5433, 39.2456),
 ("Ghulil",              21.5089, 39.2398),
 ("Al-Manar",            21.5462, 39.1948),
 ("Al-Fadeelah",         21.6234, 39.1987),
@@ -860,7 +860,7 @@ elif clean_page == "Demographics":
         miss_df = nbhd_counts[nbhd_counts['lat'].isna()].copy()
 
         # Scatter map -------------
-        st.markdown('<div class="chart-card"><div class="card-title">Cases by Neighbourhood — Map</div>',
+        st.markdown('<div class="chart-card"><div class="card-title">Cases by Neighbourhood </div>',
                     unsafe_allow_html=True)
 
         if not map_df.empty:
