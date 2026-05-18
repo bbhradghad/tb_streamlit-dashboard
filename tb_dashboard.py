@@ -1,9 +1,14 @@
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import io
+from pathlib import Path
+try:
+    from rapidfuzz import process, fuzz
+    _FUZZY_OK = True
+except ImportError:
+    _FUZZY_OK = False
  
 st.set_page_config(
     page_title="TB Dashboard - First Health Cluster",
@@ -36,7 +41,7 @@ BLUE_SCALE = [[0.0, BLUE_PALE2], [0.5, BLUE_LT], [1.0, NAVY]]
 PALETTE    = [BLUE_MED, TEAL, "#8B5CF6", "#F59E0B", "#10B981",
               "#EF4444", "#6366F1", "#14B8A6", NAVY, GRAY_MED]
  
-# CSS 
+# CSS
 st.markdown(f"""
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -127,7 +132,7 @@ st.markdown(f"""
       margin:10px 16px;
   }}
  
-  /* Top header */
+  /* ── Top header ── */
   .top-header {{
       background:linear-gradient(120deg,{NAVY} 0%,{NAVY_MED} 55%,{BLUE_MED} 100%);
       padding:16px 24px;
@@ -150,7 +155,7 @@ st.markdown(f"""
       font-size:0.70rem; color:{WHITE}; font-weight:500;
   }}
  
-  /*  Filter card (inside header area) */
+  /* ── Filter card (inside header area) ── */
   .filter-card {{
       background:{WHITE};
       border:1px solid {BORDER};
@@ -200,7 +205,7 @@ st.markdown(f"""
       margin-bottom:3px !important;
   }}
  
-  /* KPI cards — strict uniform size */
+  /* ── KPI cards — strict uniform size ── */
   .kpi-card {{
       background:{WHITE};
       border:1px solid {BORDER};
@@ -248,7 +253,7 @@ st.markdown(f"""
       margin:14px 0 8px 0;
   }}
  
-  /* Chart card */
+  /* ── Chart card ── */
   .chart-card {{
       background:{WHITE};
       border:1px solid {BORDER};
@@ -278,7 +283,7 @@ st.markdown(f"""
       letter-spacing:0.4px;
   }}
  
-  /* Contact profile */
+  /* ── Contact profile ── */
   .contact-profile {{
       background:{BLUE_PALE};
       border:1px solid {BLUE_PALE2};
@@ -305,7 +310,7 @@ st.markdown(f"""
   .info-item .value.blue  {{ color:{BLUE_MED}; }}
   .info-item .value.red   {{ color:{RED}; }}
  
-  /* Page title */
+  /* ── Page title ── */
   .page-title {{
       font-size:1rem; font-weight:700; color:{NAVY};
       margin:0 0 16px 0; padding-bottom:10px;
@@ -318,7 +323,7 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
  
-# Column lists 
+#  Column lists 
 A_TO_F = ['INV ID', 'Date of entry in HESN', 'Recieved Date', 'Epi year', 'Epi week', 'Name']
 HIGHLIGHTED_COLS = [
     'Gender', 'Age in years', 'Nationality', 'Saudi', 'Address', 'Occupation',
@@ -333,7 +338,7 @@ HIGHLIGHTED_COLS = [
 ]
 TARGET_COLS = A_TO_F + HIGHLIGHTED_COLS
  
-# Chart helper
+# Chart helper 
 def base_layout(fig, height=320, margin=None, legend=False):
     m = margin or dict(t=10, b=40, l=6, r=6)
     fig.update_layout(
@@ -345,7 +350,7 @@ def base_layout(fig, height=320, margin=None, legend=False):
     )
     return fig
  
-# Data loaders
+# Data loaders 
 @st.cache_data
 def load_df(file_bytes):
     df = pd.read_excel(io.BytesIO(file_bytes))
@@ -401,6 +406,7 @@ def load_verify_sheet(file_bytes):
  
 
 # SIDEBAR — Navigation + Upload + Filters
+
 with st.sidebar:
     # Logo / title
     st.markdown(f"""
@@ -494,8 +500,8 @@ with st.sidebar:
           Total records: <span style="color:{WHITE};font-weight:600;">{len(df):,}</span>
         </div>""", unsafe_allow_html=True)
  
-
 # MAIN CONTENT
+
 if df is None:
     st.markdown(f"""
     <div class="top-header">
@@ -510,7 +516,7 @@ if df is None:
 registered_codes = registered_codes if 'registered_codes' in dir() else []
 screened_codes   = screened_codes   if 'screened_codes'   in dir() else []
  
-# ── Password ──────────────────────────────────────────────────────────────────
+# Password 
 password = st.text_input("Password", type="password",
                           placeholder="Enter password to continue",
                           label_visibility="collapsed")
@@ -519,7 +525,7 @@ if password != "JFHC2026":
         st.error("Incorrect password. Please try again.")
     st.stop()
  
-#Apply filters 
+# Apply filters 
 fdf = df.copy()
 if sel_weeks    and 'Epi week'           in fdf.columns: fdf = fdf[fdf['Epi week'].isin(sel_weeks)]
 if sel_gender   and 'Gender'             in fdf.columns: fdf = fdf[fdf['Gender'].isin(sel_gender)]
@@ -533,7 +539,7 @@ if fdf.empty:
 total = len(fdf)
 contacts_total = len(contacts_df) if contacts_df is not None else 0
  
-#Shared KPI values
+# Shared KPI values 
 active_week = int(fdf['Epi week'].max()) if 'Epi week' in fdf.columns else '-'
 males   = int((fdf['Gender'] == 'Male').sum())           if 'Gender'      in fdf.columns else 0
 females = int((fdf['Gender'] == 'Female').sum())         if 'Gender'      in fdf.columns else 0
@@ -545,7 +551,7 @@ avg_age = fdf['Age in years'].mean()                     if 'Age in years' in fd
 died    = int((fdf['Outcome'] == 'Died').sum())          if 'Outcome'     in fdf.columns else 0
 in_prog = int((fdf['Outcome'].astype(str).str.strip() == 'In progress').sum()) if 'Outcome' in fdf.columns else 0
  
-#Top header (always visible)
+# Top header (always visible)
 st.markdown(f"""
 <div class="top-header">
   <div>
@@ -555,7 +561,7 @@ st.markdown(f"""
   <div class="header-badge">Jeddah First Health Cluster</div>
 </div>""", unsafe_allow_html=True)
  
-#Filter summary bar (above KPIs)
+# Filter summary bar (above KPIs)
 st.markdown(f"""
 <div style="background:{WHITE};border:1px solid {BORDER};border-radius:10px;
             padding:10px 18px;margin-bottom:14px;display:flex;align-items:center;
@@ -617,10 +623,12 @@ st.markdown(f"<hr style='border-color:{BORDER};margin:18px 0 14px 0;'>", unsafe_
  
 
 # PAGE ROUTING via sidebar radio
+
 clean_page = page.strip()
  
 
 # PAGE 1 — Epidemic Curve
+
 if clean_page == "Epidemic Curve":
     st.markdown('<div class="page-title">Epidemic Curve</div>', unsafe_allow_html=True)
  
@@ -748,24 +756,149 @@ if clean_page == "Epidemic Curve":
  
 
 # PAGE 2 — Demographics
+
 elif clean_page == "Demographics":
     st.markdown('<div class="page-title">Demographics</div>', unsafe_allow_html=True)
  
-    # Neighbourhood distribution (full width first)
+    #  Neighbourhood Map 
     if 'Address' in fdf.columns:
-        st.markdown('<div class="chart-card"><div class="card-title">Cases by Neighbourhood (Top 20)</div>',
+
+        # Built-in Jeddah neighbourhood coordinates database
+        _JEDDAH_NBHD = [
+            ("Al Rawdah",21.5433,39.1728),("Al Nahdah",21.5601,39.1556),
+            ("Al Nuzha",21.5614,39.1489),("Al Zahra",21.5523,39.1632),
+            ("Al Safa",21.5389,39.1810),("Al Murjan",21.5271,39.1340),
+            ("Al Shati",21.5317,39.1305),("Al Hamra",21.5478,39.1401),
+            ("Al Bawadi",21.5706,39.1633),("Al Andalus",21.5655,39.1715),
+            ("Al Faisaliyah",21.5442,39.2010),("Al Waha",21.5720,39.1810),
+            ("Al Rabwah",21.5498,39.1895),("Al Aziziyah",21.5321,39.2145),
+            ("Al Rehab",21.5590,39.2260),("Al Wurud",21.5531,39.1745),
+            ("Al Manar",21.5462,39.1948),("Al Khalidiyah",21.5201,39.1888),
+            ("Al Balad",21.4858,39.1868),("Al Sharafiyah",21.5120,39.2001),
+            ("Al Mahjar",21.5780,39.1960),("Al Marwah",21.5840,39.1880),
+            ("Al Salamah",21.5673,39.1952),("Al Mishrifah",21.5890,39.2100),
+            ("Al Taiybah",21.5810,39.2200),("Al Naeem",21.5742,39.2105),
+            ("Al Ruwais",21.5250,39.1650),("Al Jamiah",21.5160,39.2420),
+            ("Al Muhammadiyah",21.5230,39.2350),("Al Samer",21.6020,39.1750),
+            ("Al Yaqout",21.6080,39.1810),("Al Nakhil",21.6150,39.1880),
+            ("Obhur Al Shamaliyah",21.6700,39.1500),("Obhur Al Janubiyah",21.6400,39.1500),
+            ("Al Shulah",21.6300,39.1400),("Al Basateen",21.5090,39.2280),
+            ("Al Rabi",21.6210,39.1920),("Al Ajawid",21.6100,39.1680),
+            ("Al Taysir",21.5960,39.2050),("Al Fayhaa",21.5880,39.2050),
+            ("Al Sulimaniyah",21.5480,39.1820),("Al Muntazah",21.5080,39.2190),
+            ("Al Nadheem",21.5130,39.2300),("Al Sabeel",21.5050,39.1960),
+            ("Al Hindawiyah",21.5020,39.1920),("Al Baghdadiyah Al Gharbiyah",21.5170,39.1820),
+            ("Al Baghdadiyah Al Sharqiyah",21.5170,39.1900),("Al Hamdaniyah",21.5600,39.2380),
+            ("Ash Shuhada",21.5700,39.2480),("Al Masarah",21.5260,39.2460),
+            ("Al Waziriyah",21.5480,39.2570),("Al Riyadh",21.5340,39.2590),
+            ("Al Umrah Al Jadidah",21.5250,39.2680),("Al Ghulail",21.5150,39.2620),
+            ("Al Misfalah",21.5000,39.2500),("Az Zaytoun",21.5190,39.2130),
+            ("Al Khumrah",21.4800,39.2600),("Al Marikh",21.5080,39.2700),
+            ("Al Nawras",21.5820,39.1600),("Al Rawabi",21.5950,39.2150),
+            ("Al Iskan",21.5620,39.2310),("Al Maqabil",21.5680,39.2390),
+            ("Al Juhayfa",21.5900,39.1350),("Al Corniche",21.5200,39.1250),
+            ("Al Faisaliyyah",21.5442,39.2010),("Al Zahraa",21.5520,39.1630),
+            ("Al Rowdah",21.5433,39.1728),("Al Nozha",21.5614,39.1489),
+            ("Prince Fawwaz North",21.5950,39.1820),("Prince Fawwaz South",21.5880,39.1820),
+            ("North Obhur",21.6700,39.1500),("South Obhur",21.6400,39.1500),
+            ("Al Ruwaybi",21.5560,39.2170),("Al Salhiyah",21.5430,39.2140),
+            ("Al Mujtama",21.5750,39.2280),("Al Amir Fawwaz Al Shamali",21.5950,39.1820),
+            ("Al Amir Fawwaz Al Janubi",21.5880,39.1820),("Al Buraykah",21.5010,39.2360),
+            ("Al Azhar",21.5540,39.2230),("Al Hindawiyyah",21.5020,39.1920),
+            ("Al Shalatiyah",21.5350,39.1580),("Al Wurood",21.5530,39.1750),
+        ]
+        _NBHD_NAMES = [x[0] for x in _JEDDAH_NBHD]
+        _NBHD_DICT  = {x[0]: (x[1], x[2]) for x in _JEDDAH_NBHD}
+
+        # Count cases per neighbourhood
+        nbhd_counts = fdf['Address'].dropna().value_counts().reset_index()
+        nbhd_counts.columns = ['Neighbourhood', 'Cases']
+
+        # Try to load external coords CSV first, else fuzzy-match built-in DB
+        coords_csv = Path("neighbourhood_coords.csv")
+        if coords_csv.exists():
+            coords_df = pd.read_csv(coords_csv)
+            coords_df = coords_df.dropna(subset=['lat', 'lon'])
+            lookup = {r['neighbourhood_raw']: (r['lat'], r['lon'])
+                      for _, r in coords_df.iterrows()}
+        else:
+            lookup = {}
+
+        def _resolve(name):
+            if name in lookup:
+                return lookup[name]
+            if _FUZZY_OK:
+                m = process.extractOne(name, _NBHD_NAMES,
+                                       scorer=fuzz.token_sort_ratio,
+                                       score_cutoff=55)
+                if m:
+                    return _NBHD_DICT[m[0]]
+            return None, None
+
+        nbhd_counts['lat'] = None
+        nbhd_counts['lon'] = None
+        for i, row in nbhd_counts.iterrows():
+            lat, lon = _resolve(row['Neighbourhood'])
+            nbhd_counts.at[i, 'lat'] = lat
+            nbhd_counts.at[i, 'lon'] = lon
+
+        map_df  = nbhd_counts.dropna(subset=['lat', 'lon']).copy()
+        miss_df = nbhd_counts[nbhd_counts['lat'].isna()].copy()
+
+        # Scatter map -------------
+        st.markdown('<div class="chart-card"><div class="card-title">Cases by Neighbourhood — Map</div>',
                     unsafe_allow_html=True)
-        nbhd_df = fdf['Address'].dropna().value_counts().head(20).reset_index()
-        nbhd_df.columns = ['Neighbourhood', 'Count']
-        fig_nbhd = px.bar(nbhd_df, x='Count', y='Neighbourhood', orientation='h',
-                          color='Count', color_continuous_scale=BLUE_SCALE, text='Count')
-        fig_nbhd.update_traces(textposition='outside', textfont_size=10)
-        h_nbhd = max(320, len(nbhd_df) * 28)
-        fig_nbhd = base_layout(fig_nbhd, height=h_nbhd, margin=dict(t=6, b=16, l=6, r=55))
-        fig_nbhd.update_layout(bargap=0.22, coloraxis_showscale=False,
-                                yaxis=dict(autorange='reversed', title=''),
-                                xaxis=dict(title='Cases'))
-        st.plotly_chart(fig_nbhd, use_container_width=True)
+
+        if not map_df.empty:
+            fig_map = px.scatter_mapbox(
+                map_df,
+                lat='lat', lon='lon',
+                size='Cases',
+                color='Cases',
+                color_continuous_scale=BLUE_SCALE,
+                hover_name='Neighbourhood',
+                hover_data={'Cases': True, 'lat': False, 'lon': False},
+                size_max=45,
+                zoom=10.5,
+                center={"lat": 21.543, "lon": 39.172},
+                mapbox_style="carto-positron",
+                labels={'Cases': 'Cases'},
+            )
+            fig_map.update_layout(
+                paper_bgcolor=WHITE,
+                height=480,
+                margin=dict(t=4, b=4, l=0, r=0),
+                coloraxis_colorbar=dict(
+                    title="Cases",
+                    thickness=12,
+                    len=0.6,
+                    tickfont=dict(size=10),
+                ),
+            )
+            st.plotly_chart(fig_map, use_container_width=True)
+
+            if not miss_df.empty:
+                st.markdown(
+                    f"<p style='font-size:0.72rem;color:{GRAY_MED};margin-top:4px;'>"
+                    f"<b>{len(miss_df)}</b> neighbourhood(s) not shown (no coordinates matched): "
+                    + ", ".join(miss_df['Neighbourhood'].tolist()) + "</p>",
+                    unsafe_allow_html=True
+                )
+        else:
+            # Fallback: show bar chart if nothing matched
+            st.info("No coordinates matched — showing bar chart instead. "
+                    "Run build_neighbourhood_coords.py and place the CSV here to enable the map.")
+            nbhd_top = nbhd_counts.head(20)
+            fig_fb = px.bar(nbhd_top, x='Cases', y='Neighbourhood', orientation='h',
+                            color='Cases', color_continuous_scale=BLUE_SCALE, text='Cases')
+            fig_fb.update_traces(textposition='outside', textfont_size=10)
+            fig_fb = base_layout(fig_fb, height=max(320, len(nbhd_top)*28),
+                                 margin=dict(t=6, b=16, l=6, r=55))
+            fig_fb.update_layout(bargap=0.22, coloraxis_showscale=False,
+                                 yaxis=dict(autorange='reversed', title=''),
+                                 xaxis=dict(title='Cases'))
+            st.plotly_chart(fig_fb, use_container_width=True)
+
         st.markdown('</div>', unsafe_allow_html=True)
  
     col_a, col_b = st.columns(2, gap="large")
@@ -806,9 +939,10 @@ elif clean_page == "Demographics":
                               xaxis=dict(title='Age Group'), yaxis=dict(title='Cases'))
             st.plotly_chart(fig, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
- 
+
 
 # PAGE 3 — Disease & Treatment
+
 elif clean_page == "Disease & Treatment":
     st.markdown('<div class="page-title">Disease & Treatment</div>', unsafe_allow_html=True)
  
@@ -882,7 +1016,9 @@ elif clean_page == "Disease & Treatment":
         st.plotly_chart(fig, use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
  
+
 # PAGE 4 — Comorbidities
+
 elif clean_page == "Comorbidities":
     st.markdown('<div class="page-title">Comorbidities</div>', unsafe_allow_html=True)
  
@@ -1080,8 +1216,10 @@ elif clean_page == "Comorbidities":
                 st.markdown('</div>', unsafe_allow_html=True)
  
  
+ 
 
 # PAGE 5 — Contacts
+
 elif clean_page == "Contacts":
     st.markdown('<div class="page-title">Contacts</div>', unsafe_allow_html=True)
  
@@ -1099,7 +1237,7 @@ elif clean_page == "Contacts":
         on_inh    = int((cdf['Intervention'].astype(str).str.strip().str.upper() == 'INH').sum()) if 'Intervention' in cdf.columns else 0
         is_case   = int((cdf['Is he/she a Case?'].astype(str).str.strip().str.lower() == 'yes').sum()) if 'Is he/she a Case?' in cdf.columns else 0
  
-        # ── حساب أرقام الرئوي والمخالطين ──────────────────────────────────
+        # حساب أرقام الرئوي والمخالطين 
         pulm_all       = fdf[fdf['Final Dis'] == 'Pulmonary'] if 'Final Dis' in fdf.columns else fdf
         n_pulm_all     = len(pulm_all)
         n_have_contacts = int((pulm_all['Patient Have Contacts'] == 'Yes').sum()) if 'Patient Have Contacts' in pulm_all.columns else 0
@@ -1136,7 +1274,7 @@ elif clean_page == "Contacts":
  
         st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
  
-        # مؤشر فحص المخالطين العام 
+        # مؤشر فحص المخالطين العام
         scr_rate    = screened_n / n_pulm_all * 100 if n_pulm_all else 0
  
         if scr_rate >= 80:
@@ -1275,7 +1413,7 @@ elif clean_page == "Contacts":
                   <div class="kpi-sub">{sub if sub else "&nbsp;"}</div>
                 </div>""", unsafe_allow_html=True)
  
-        # Cases Not Yet Screened 
+        # Cases Not Yet Screened
         st.markdown('<div class="section-title">Cases Not Yet Screened</div>', unsafe_allow_html=True)
         if 'Final Dis' in fdf.columns and 'Patient Have Contacts' in fdf.columns:
             screened_set = set(str(c).strip() for c in screened_codes)
@@ -1365,8 +1503,10 @@ elif clean_page == "Contacts":
             st.download_button(f"Download contacts for {sel_code}",
                                data=case_contacts.to_csv(index=False, encoding='utf-8-sig'),
                                file_name=f"contacts_{sel_code}.csv", mime="text/csv")
+ 
 
 # PAGE 6 — Raw Data
+
 elif clean_page == "Raw Data":
     st.markdown('<div class="page-title">Raw Data</div>', unsafe_allow_html=True)
     st.markdown('<div class="chart-card"><div class="card-title">All Records</div>',
