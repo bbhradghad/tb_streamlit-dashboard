@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
  
-# ── Palette ────────────────────────────────────────────────────────────────────
+# Palette 
 NAVY       = "#0D2B5E"
 NAVY_MED   = "#1B4F9B"
 BLUE_MED   = "#2563EB"
@@ -36,7 +36,7 @@ BLUE_SCALE = [[0.0, BLUE_PALE2], [0.5, BLUE_LT], [1.0, NAVY]]
 PALETTE    = [BLUE_MED, TEAL, "#8B5CF6", "#F59E0B", "#10B981",
               "#EF4444", "#6366F1", "#14B8A6", NAVY, GRAY_MED]
  
-# ── CSS ────────────────────────────────────────────────────────────────────────
+# CSS 
 st.markdown(f"""
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -127,7 +127,7 @@ st.markdown(f"""
       margin:10px 16px;
   }}
  
-  /* ── Top header ── */
+  /* Top header */
   .top-header {{
       background:linear-gradient(120deg,{NAVY} 0%,{NAVY_MED} 55%,{BLUE_MED} 100%);
       padding:16px 24px;
@@ -150,7 +150,7 @@ st.markdown(f"""
       font-size:0.70rem; color:{WHITE}; font-weight:500;
   }}
  
-  /* ── Filter card (inside header area) ── */
+  /*  Filter card (inside header area) */
   .filter-card {{
       background:{WHITE};
       border:1px solid {BORDER};
@@ -200,7 +200,7 @@ st.markdown(f"""
       margin-bottom:3px !important;
   }}
  
-  /* ── KPI cards — strict uniform size ── */
+  /* KPI cards — strict uniform size */
   .kpi-card {{
       background:{WHITE};
       border:1px solid {BORDER};
@@ -248,7 +248,7 @@ st.markdown(f"""
       margin:14px 0 8px 0;
   }}
  
-  /* ── Chart card ── */
+  /* Chart card */
   .chart-card {{
       background:{WHITE};
       border:1px solid {BORDER};
@@ -278,7 +278,7 @@ st.markdown(f"""
       letter-spacing:0.4px;
   }}
  
-  /* ── Contact profile ── */
+  /* Contact profile */
   .contact-profile {{
       background:{BLUE_PALE};
       border:1px solid {BLUE_PALE2};
@@ -305,7 +305,7 @@ st.markdown(f"""
   .info-item .value.blue  {{ color:{BLUE_MED}; }}
   .info-item .value.red   {{ color:{RED}; }}
  
-  /* ── Page title ── */
+  /* Page title */
   .page-title {{
       font-size:1rem; font-weight:700; color:{NAVY};
       margin:0 0 16px 0; padding-bottom:10px;
@@ -318,7 +318,7 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
  
-# ── Column lists ───────────────────────────────────────────────────────────────
+# Column lists 
 A_TO_F = ['INV ID', 'Date of entry in HESN', 'Recieved Date', 'Epi year', 'Epi week', 'Name']
 HIGHLIGHTED_COLS = [
     'Gender', 'Age in years', 'Nationality', 'Saudi', 'Address', 'Occupation',
@@ -333,7 +333,7 @@ HIGHLIGHTED_COLS = [
 ]
 TARGET_COLS = A_TO_F + HIGHLIGHTED_COLS
  
-# ── Chart helper ───────────────────────────────────────────────────────────────
+# Chart helper
 def base_layout(fig, height=320, margin=None, legend=False):
     m = margin or dict(t=10, b=40, l=6, r=6)
     fig.update_layout(
@@ -345,7 +345,7 @@ def base_layout(fig, height=320, margin=None, legend=False):
     )
     return fig
  
-# ── Data loaders ───────────────────────────────────────────────────────────────
+# Data loaders
 @st.cache_data
 def load_df(file_bytes):
     df = pd.read_excel(io.BytesIO(file_bytes))
@@ -399,9 +399,8 @@ def load_verify_sheet(file_bytes):
     screened   = raw[raw[fahss_col].astype(str).str.strip() == 'نعم']['code'].tolist()
     return registered, screened
  
-# ══════════════════════════════════════════════════════════════════════════════
+
 # SIDEBAR — Navigation + Upload + Filters
-# ══════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
     # Logo / title
     st.markdown(f"""
@@ -495,9 +494,8 @@ with st.sidebar:
           Total records: <span style="color:{WHITE};font-weight:600;">{len(df):,}</span>
         </div>""", unsafe_allow_html=True)
  
-# ══════════════════════════════════════════════════════════════════════════════
+
 # MAIN CONTENT
-# ══════════════════════════════════════════════════════════════════════════════
 if df is None:
     st.markdown(f"""
     <div class="top-header">
@@ -521,7 +519,7 @@ if password != "JFHC2026":
         st.error("Incorrect password. Please try again.")
     st.stop()
  
-# ── Apply filters ─────────────────────────────────────────────────────────────
+#Apply filters 
 fdf = df.copy()
 if sel_weeks    and 'Epi week'           in fdf.columns: fdf = fdf[fdf['Epi week'].isin(sel_weeks)]
 if sel_gender   and 'Gender'             in fdf.columns: fdf = fdf[fdf['Gender'].isin(sel_gender)]
@@ -535,7 +533,7 @@ if fdf.empty:
 total = len(fdf)
 contacts_total = len(contacts_df) if contacts_df is not None else 0
  
-# ── Shared KPI values ─────────────────────────────────────────────────────────
+#Shared KPI values
 active_week = int(fdf['Epi week'].max()) if 'Epi week' in fdf.columns else '-'
 males   = int((fdf['Gender'] == 'Male').sum())           if 'Gender'      in fdf.columns else 0
 females = int((fdf['Gender'] == 'Female').sum())         if 'Gender'      in fdf.columns else 0
@@ -547,7 +545,7 @@ avg_age = fdf['Age in years'].mean()                     if 'Age in years' in fd
 died    = int((fdf['Outcome'] == 'Died').sum())          if 'Outcome'     in fdf.columns else 0
 in_prog = int((fdf['Outcome'].astype(str).str.strip() == 'In progress').sum()) if 'Outcome' in fdf.columns else 0
  
-# ── Top header (always visible) ───────────────────────────────────────────────
+#Top header (always visible)
 st.markdown(f"""
 <div class="top-header">
   <div>
@@ -557,7 +555,7 @@ st.markdown(f"""
   <div class="header-badge">Jeddah First Health Cluster</div>
 </div>""", unsafe_allow_html=True)
  
-# ── Filter summary bar (above KPIs) ──────────────────────────────────────────
+#Filter summary bar (above KPIs)
 st.markdown(f"""
 <div style="background:{WHITE};border:1px solid {BORDER};border-radius:10px;
             padding:10px 18px;margin-bottom:14px;display:flex;align-items:center;
@@ -581,7 +579,7 @@ st.markdown(f"""
   </span>
 </div>""", unsafe_allow_html=True)
  
-# ── KPIs (always visible under header) ───────────────────────────────────────
+# KPIs (always visible under header) 
 st.markdown(f'<div class="kpi-group-label">Case Indicators</div>', unsafe_allow_html=True)
 r1 = st.columns(5, gap="small")
 for col, (label, val, sub) in zip(r1, [
@@ -617,14 +615,12 @@ for col, (label, val, sub) in zip(r2, [
  
 st.markdown(f"<hr style='border-color:{BORDER};margin:18px 0 14px 0;'>", unsafe_allow_html=True)
  
-# ══════════════════════════════════════════════════════════════════════════════
+
 # PAGE ROUTING via sidebar radio
-# ══════════════════════════════════════════════════════════════════════════════
 clean_page = page.strip()
  
-# ════════════════════════════════════════════════════════════════════════════════
+
 # PAGE 1 — Epidemic Curve
-# ════════════════════════════════════════════════════════════════════════════════
 if clean_page == "Epidemic Curve":
     st.markdown('<div class="page-title">Epidemic Curve</div>', unsafe_allow_html=True)
  
@@ -750,9 +746,8 @@ if clean_page == "Epidemic Curve":
                 </div>""", unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
  
-# ════════════════════════════════════════════════════════════════════════════════
+
 # PAGE 2 — Demographics
-# ════════════════════════════════════════════════════════════════════════════════
 elif clean_page == "Demographics":
     st.markdown('<div class="page-title">Demographics</div>', unsafe_allow_html=True)
  
@@ -812,9 +807,8 @@ elif clean_page == "Demographics":
             st.plotly_chart(fig, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
  
-# ════════════════════════════════════════════════════════════════════════════════
+
 # PAGE 3 — Disease & Treatment
-# ════════════════════════════════════════════════════════════════════════════════
 elif clean_page == "Disease & Treatment":
     st.markdown('<div class="page-title">Disease & Treatment</div>', unsafe_allow_html=True)
  
@@ -888,9 +882,7 @@ elif clean_page == "Disease & Treatment":
         st.plotly_chart(fig, use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
  
-# ════════════════════════════════════════════════════════════════════════════════
 # PAGE 4 — Comorbidities
-# ════════════════════════════════════════════════════════════════════════════════
 elif clean_page == "Comorbidities":
     st.markdown('<div class="page-title">Comorbidities</div>', unsafe_allow_html=True)
  
@@ -940,7 +932,7 @@ elif clean_page == "Comorbidities":
                   <div class="kpi-sub">{cnt/total*100:.1f}% of cases</div>
                 </div>""", unsafe_allow_html=True)
  
-    # ── Deaths ──────────────────────────────────────────────────────────────
+    # Deaths
     st.markdown('<div class="section-title">Deaths</div>', unsafe_allow_html=True)
     if 'Outcome' in fdf.columns:
         died_df = fdf[fdf['Outcome'] == 'Died'].copy()
@@ -1010,7 +1002,7 @@ elif clean_page == "Comorbidities":
                     st.plotly_chart(fig, use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
  
-    # ── HIV ─────────────────────────────────────────────────────────────────
+    # HIV
     st.markdown('<div class="section-title">HIV Co-infection</div>', unsafe_allow_html=True)
     if 'HIV result ' in fdf.columns:
         hiv_pos_df  = fdf[fdf['HIV result '].astype(str).str.strip().str.lower() == 'positive'].copy()
@@ -1088,10 +1080,8 @@ elif clean_page == "Comorbidities":
                 st.markdown('</div>', unsafe_allow_html=True)
  
  
- 
-# ════════════════════════════════════════════════════════════════════════════════
+
 # PAGE 5 — Contacts
-# ════════════════════════════════════════════════════════════════════════════════
 elif clean_page == "Contacts":
     st.markdown('<div class="page-title">Contacts</div>', unsafe_allow_html=True)
  
@@ -1122,7 +1112,7 @@ elif clean_page == "Contacts":
         pct_scr   = screened_n      / n_have_contacts * 100 if n_have_contacts else 0
         pct_notsc = n_not_yet_scr   / n_have_contacts * 100 if n_have_contacts else 0
  
-        # ── PULMONARY CASES — CONTACT SCREENING STATUS ─────────────────────
+        # PULMONARY CASES — CONTACT SCREENING STATUS 
         st.markdown(f"""
         <div style="font-size:0.60rem;font-weight:700;color:{GRAY_MED};
                     text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;">
@@ -1146,7 +1136,7 @@ elif clean_page == "Contacts":
  
         st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
  
-        # ── مؤشر فحص المخالطين العام ──────────────────────────────────────
+        # مؤشر فحص المخالطين العام 
         scr_rate    = screened_n / n_pulm_all * 100 if n_pulm_all else 0
  
         if scr_rate >= 80:
@@ -1285,7 +1275,7 @@ elif clean_page == "Contacts":
                   <div class="kpi-sub">{sub if sub else "&nbsp;"}</div>
                 </div>""", unsafe_allow_html=True)
  
-        # ── Cases Not Yet Screened ─────────────────────────────────────────
+        # Cases Not Yet Screened 
         st.markdown('<div class="section-title">Cases Not Yet Screened</div>', unsafe_allow_html=True)
         if 'Final Dis' in fdf.columns and 'Patient Have Contacts' in fdf.columns:
             screened_set = set(str(c).strip() for c in screened_codes)
@@ -1375,10 +1365,8 @@ elif clean_page == "Contacts":
             st.download_button(f"Download contacts for {sel_code}",
                                data=case_contacts.to_csv(index=False, encoding='utf-8-sig'),
                                file_name=f"contacts_{sel_code}.csv", mime="text/csv")
- 
-# ════════════════════════════════════════════════════════════════════════════════
+
 # PAGE 6 — Raw Data
-# ════════════════════════════════════════════════════════════════════════════════
 elif clean_page == "Raw Data":
     st.markdown('<div class="page-title">Raw Data</div>', unsafe_allow_html=True)
     st.markdown('<div class="chart-card"><div class="card-title">All Records</div>',
@@ -1396,7 +1384,7 @@ elif clean_page == "Raw Data":
                        file_name="tb_cases_filtered.csv", mime="text/csv")
     st.markdown('</div>', unsafe_allow_html=True)
  
-# ── Footer ─────────────────────────────────────────────────────────────────────
+# Footer 
 st.markdown(f"""
 <div style="text-align:center;padding:14px 0 4px 0;border-top:1px solid {BORDER};margin-top:20px;">
   <span style="font-size:0.66rem;color:{GRAY_LT};">
