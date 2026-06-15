@@ -3,6 +3,13 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import io
+import json
+from pathlib import Path
+try:
+    from rapidfuzz import process, fuzz
+    _FUZZY_OK = True
+except ImportError:
+    _FUZZY_OK = False
  
 st.set_page_config(
     page_title="TB Dashboard - First Health Cluster",
@@ -755,22 +762,236 @@ if clean_page == "Epidemic Curve":
 elif clean_page == "Demographics":
     st.markdown('<div class="page-title">Demographics</div>', unsafe_allow_html=True)
  
-    # Neighbourhood distribution (full width first)
+    # ── Neighbourhood Choropleth Map ────────────────────────────────────────
+    @st.cache_data
+    def load_jeddah_geojson():
+        path = Path(__file__).parent / "jeddah_districts.geojson"
+        if not path.exists():
+            return None, [], {}
+        with open(path, "r", encoding="utf-8") as f:
+            gj = json.load(f)
+        names = [feat["properties"]["name"] for feat in gj["features"]]
+        ar_to_en = {
+            feat["properties"].get("name_ar", "").strip(): feat["properties"]["name"]
+            for feat in gj["features"]
+            if feat["properties"].get("name_ar", "").strip()
+        }
+        return gj, names, ar_to_en
+
+    # Manual aliases — exact fixes for the spellings found in the TB Excel
+    # "Address" column, mapped to the exact district name used in jeddah_districts.geojson.
+    # A value of None means the address has no corresponding Jeddah district
+    # (e.g. outside Jeddah, unknown, or a "Kilo" point not in the boundary file)
+    # and will be excluded from the map but listed as "unmatched" below it.
+    DISTRICT_ALIASES = {
+        # ── direct spelling fixes (high confidence) ─────────────────────────
+        "Mraykh":                     "Mareekh",
+        "Ghulil":                     "Ghalil",
+        "Al-Fadeelah":                "Al-Fadel",
+        "Al Amir Fawaz Al Janouby":   "Prince Fawaz Al-Janobi",
+        "Al-Amir Fawaz":              "Prince Fawaz Al-Shamali",
+        "Al-Amir Abdel Majeed":       "Prince Abdulmajeed",
+        "Abruq Ar-Roghamah":          "Al-Raghamah",
+        "Al-Nozla Al-Yamaniya":       "An Nazlah Al-Yamaniah",
+        "Al-Nozla Ash-Sharqiya":      "An Nazlah Al-Sharqiah",
+        "Mushrefah":                  "Mishrifah",
+        "Al-Sanabil":                 "Al-Sanabel",
+        "Al-Quryniah":                "Al-Qriniah",
+        "Al Qurainiyah":              "Al-Qriniah",
+        "Al-Naseem":                  "Al-Naeem",
+        "Al-Mahjar":                  "Al-Mahjar 2",
+        "Al-Wahah":                   "Al-Wahah",          
+        "Al-Faihaa":                  "Al-Fayha",
+        "AL-Fayhaa":                  "Al-Fayha",
+        "Al Rughama":                 "Al-Raghamah",
+        "Al-Mahameed":                "Al-Mahameed",     
+        "Al-Taiseer":                 "Al-Bashaer",        
+        "Al-Hindawiya":               "Al-Hendawiah",
+        "Al-Rawabi":                  "Ar Rawabi",
+        "Al-Rawdah":                  "Ar Rawdah",
+        "Al-Ajwad":                   "Al-Ajwad",          
+        "Al-Shaqah":                  "Al-Sharqiah",
+        "Al-Samer":                   "Al-Samer",          
+        "Al-Harazat":                 "Al-Harazat",       
+        "Al-Adl":                     "Al-Adel",
+        "Um As-Salam":                "Um Al-Salm 1",
+        "Madayin Al-Fahad":           "Madaen Al-Fahad",
+        "Al-Waziriyyah":              "Al-Waziriah",
+        "Al-Ajaweed":                 "Al-Ajaweed",      
+        "Al Shifa":                   "Al-Sahifah",      
+        "Al-Sulimaniyyah":            "As Sulaimaniyah",
+        "Al-Ruwais":                  "Ar Ruwais",
+        "Al Ruwais":                  "Ar Ruwais",
+        "Al-Rabwa":                   "Ar Rabwah",
+        "Al-Rabwah":                  "Ar Rabwah",
+        "Al-Khumra":                  "Al-Khamrah",
+        "Al Olaya":                   "Al-Olaya",
+        "Al-Woroud":                  "Al-Wurud",
+        "Al-Balad":                   "Al-Balad 2",
+        "Taiba":                      "Tayba",
+        "Al-Baghdadiya Al-Gharbiya":  "Al-Baghdadiah Al-Gharbiah",
+        "Al-Sharafeyyah":             "Al-Sharfiah",
+        "Al-Thaghr":                  "Al-Thaghr",         
+        "Al-Safa":                    "Al-Safa",         
+
+        # ── Arabic address values → English district names ─────────────────
+        "الرغامة":                    "Al-Raghamah",
+        "السنابل":                    "Al-Sanabel",
+        "النسيم":                     "Al-Naeem",
+        "القرينية":                   "Al-Qriniah",
+        "القرينيه":                   "Al-Qriniah",
+        "البشير":                    "Al-Bashaer",
+        "النزلة الشرقية":             "An Nazlah Al-Sharqiah",
+        "المحجر":                     "Al-Mahjar 2",
+        "المحاميد":                   "Al-Mahameed",
+        "الهنداوية":                  "Al-Hendawiah",
+        "الرواسي":                    "Ar Rawasi",     
+        "الأجواد":                    "Al-Ajwad",
+        "حي الامير فواز":             "Prince Fawaz Al-Shamali",
+        "الشاقه":                     "Al-Sharqiah",
+        "العدل":                      "Al-Adel",
+        "أم السلم":                   "Um Al-Salm 1",
+        "الفيحاء":                    "Al-Fayha",
+        "مدائن الفهد":                "Madaen Al-Fahad",
+        "كيلو ١٤":                    None,
+        "حي الأجاويد":                "Al-Ajaweed",
+        "الحرازات":                   "Al-Harazat",
+        "k 14":                       None,
+        "sulimaniah":                 "As Sulaimaniyah",
+        "alsamer":                    "Al-Samer",
+
+        # ── values with no matching Jeddah district (excluded from map) ─────
+        "jed":                        None,
+        "Homeless":                   None,
+        "Homless":                    None,
+        "Unknown":                    None,
+        "unknown":                    None,
+        "Kilo 14":                    None,
+        "Al-Layth":                   None,
+        "Outside Jeddah":             None,
+        "presion Alshumasi":          None,
+    }
+
+
     if 'Address' in fdf.columns:
-        st.markdown('<div class="chart-card"><div class="card-title">Cases by Neighbourhood (Top 20)</div>',
+        st.markdown('<div class="chart-card"><div class="card-title">Cases by Neighbourhood — Choropleth Map</div>',
                     unsafe_allow_html=True)
-        nbhd_df = fdf['Address'].dropna().value_counts().head(20).reset_index()
-        nbhd_df.columns = ['Neighbourhood', 'Count']
-        fig_nbhd = px.bar(nbhd_df, x='Count', y='Neighbourhood', orientation='h',
-                          color='Count', color_continuous_scale=BLUE_SCALE, text='Count')
-        fig_nbhd.update_traces(textposition='outside', textfont_size=10)
-        h_nbhd = max(320, len(nbhd_df) * 28)
-        fig_nbhd = base_layout(fig_nbhd, height=h_nbhd, margin=dict(t=6, b=16, l=6, r=55))
-        fig_nbhd.update_layout(bargap=0.22, coloraxis_showscale=False,
-                                yaxis=dict(autorange='reversed', title=''),
-                                xaxis=dict(title='Cases'))
-        st.plotly_chart(fig_nbhd, use_container_width=True)
+
+        geojson, district_names, ar_to_en = load_jeddah_geojson()
+
+        nbhd_counts = fdf['Address'].dropna().astype(str).str.strip().value_counts().reset_index()
+        nbhd_counts.columns = ['Neighbourhood', 'Count']
+
+        if geojson is None:
+            st.info("jeddah_districts.geojson not found — place it next to tb_dashboard.py to enable the map.")
+        else:
+            arabic_names = list(ar_to_en.keys())
+
+            # Fuzzy-match each address value to a district name in the GeoJSON,
+            # checking the manual alias table first, then English fuzzy, then Arabic fuzzy
+            def match_district(name):
+                if name in DISTRICT_ALIASES:
+                    alias = DISTRICT_ALIASES[name]
+                    return alias  # may be None → intentionally unmapped
+                if not _FUZZY_OK:
+                    return name if name in district_names else None
+
+                is_arabic = any('\u0600' <= ch <= '\u06FF' for ch in name)
+                if is_arabic and arabic_names:
+                    m = process.extractOne(
+                        name, arabic_names,
+                        scorer=fuzz.token_sort_ratio,
+                        score_cutoff=75
+                    )
+                    if m:
+                        return ar_to_en[m[0]]
+                    return None
+
+                m = process.extractOne(
+                    name, district_names,
+                    scorer=fuzz.token_sort_ratio,
+                    score_cutoff=75
+                )
+                return m[0] if m else None
+
+            nbhd_counts['matched'] = nbhd_counts['Neighbourhood'].apply(match_district)
+
+            matched_df   = nbhd_counts[nbhd_counts['matched'].notna()].copy()
+            unmatched_df = nbhd_counts[nbhd_counts['matched'].isna()].copy()
+
+            # Aggregate counts per matched district (multiple raw names can map to same district)
+            agg_df = matched_df.groupby('matched', as_index=False)['Count'].sum()
+            agg_df.columns = ['name', 'Count']
+
+            # Ensure every district in the GeoJSON appears (0 if no cases)
+            full_df = pd.DataFrame({'name': district_names})
+            full_df = full_df.merge(agg_df, on='name', how='left')
+            full_df['Count'] = full_df['Count'].fillna(0).astype(int)
+
+            fig_map = px.choropleth_mapbox(
+                full_df,
+                geojson=geojson,
+                locations='name',
+                featureidkey='properties.name',
+                color='Count',
+                color_continuous_scale=[
+                    [0.00, BLUE_PALE],   # near-white blue for 0 cases
+                    [0.20, BLUE_PALE2],  # pale blue
+                    [0.45, BLUE_LT],     # mid blue
+                    [0.70, BLUE_MED],    # dashboard primary blue
+                    [1.00, NAVY],        # navy for highest case count
+                ],
+                mapbox_style="carto-positron",
+                center={"lat": 21.5433, "lon": 39.1728},
+                zoom=10,
+                opacity=0.82,
+                hover_name='name',
+                labels={'Count': 'Cases', 'name': 'District'},
+            )
+            fig_map.update_traces(
+                marker_line_width=0.6,
+                marker_line_color="rgba(13,43,94,0.35)",  # subtle navy district borders
+            )
+            fig_map.update_layout(
+                height=560,
+                margin=dict(t=0, b=0, l=0, r=0),
+                paper_bgcolor="rgba(0,0,0,0)",
+                coloraxis_colorbar=dict(
+                    title=dict(text="Cases", font=dict(size=12, color=NAVY, family='Inter')),
+                    thickness=14, len=0.55,
+                    tickfont=dict(size=10, color=GRAY_DARK),
+                    bgcolor="rgba(255,255,255,0.92)",
+                    bordercolor=BORDER, borderwidth=1,
+                    x=0.01, xanchor='left',
+                ),
+            )
+            st.plotly_chart(fig_map, use_container_width=True)
+
+            # Top districts table + unmatched warning
+            top_n = full_df[full_df['Count'] > 0].sort_values('Count', ascending=False).head(10)
+            top_n = top_n.reset_index(drop=True)
+            top_n.index += 1
+            top_n.columns = ['District', 'Cases']
+
+            mcol, ucol = st.columns([2, 1], gap="large")
+            with mcol:
+                st.markdown(f"<p style='font-size:0.70rem;color:{GRAY_MED};margin:6px 0 6px 0;'>"
+                            f"Top districts by case count</p>", unsafe_allow_html=True)
+                st.dataframe(top_n, use_container_width=True, height=300)
+            with ucol:
+                if not unmatched_df.empty:
+                    st.markdown(f"<p style='font-size:0.70rem;color:{GRAY_MED};margin:6px 0 6px 0;'>"
+                                f"Not shown on map: <b>{len(unmatched_df)}</b> locations "
+                                f"({int(unmatched_df['Count'].sum())} cases)</p>",
+                                unsafe_allow_html=True)
+                    st.dataframe(unmatched_df[['Neighbourhood', 'Count']],
+                                  use_container_width=True, height=260, hide_index=True)
+                else:
+                    st.markdown(f"<p style='font-size:0.70rem;color:{GRAY_MED};margin:6px 0 6px 0;'>"
+                                f"All address values matched to a district.</p>", unsafe_allow_html=True)
+
         st.markdown('</div>', unsafe_allow_html=True)
+
  
     col_a, col_b = st.columns(2, gap="large")
  
