@@ -833,7 +833,7 @@ elif clean_page == "Demographics":
         "Al-Sharafeyyah":             "Al-Sharfiah",
         "Al-Thaghr":                  "Al-Thaghr",         
         "Al-Safa":                    "Al-Safa",         
-
+        "Kilo 14":                    "Kilo 14",
         # ── Arabic address values → English district names ─────────────────
         "الرغامة":                    "Al-Raghamah",
         "السنابل":                    "Al-Sanabel",
@@ -853,11 +853,10 @@ elif clean_page == "Demographics":
         "أم السلم":                   "Um Al-Salm 1",
         "الفيحاء":                    "Al-Fayha",
         "مدائن الفهد":                "Madaen Al-Fahad",
-        "كيلو ١٤":                    None,
+        "كيلو 14":                    "Kilo 14",
         "حي الأجاويد":                "Al-Ajaweed",
         "الحرازات":                   "Al-Harazat",
-        "k 14":                       None,
-        "sulimaniah":                 "As Sulaimaniyah",
+        "sulimaniah":                "As Sulaimaniyah",
         "alsamer":                    "Al-Samer",
 
         # ── values with no matching Jeddah district (excluded from map) ─────
@@ -866,7 +865,6 @@ elif clean_page == "Demographics":
         "Homless":                    None,
         "Unknown":                    None,
         "unknown":                    None,
-        "Kilo 14":                    None,
         "Al-Layth":                   None,
         "Outside Jeddah":             None,
         "presion Alshumasi":          None,
